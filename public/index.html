@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monopoly - Browser Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Main Menu -->
+        <div id="mainMenu" class="screen active">
+            <div class="menu-container">
+                <div class="logo">
+                    <h1>MONOPOLY</h1>
+                    <p class="subtitle">LAN Game</p>
+                </div>
+
+                <div class="menu-form">
+                    <div class="form-group">
+                        <label for="playerNameInput">Enter your name:</label>
+                        <input type="text" id="playerNameInput" placeholder="Your Name" maxlength="20" />
+                    </div>
+
+                    <div class="button-group">
+                        <button id="createRoomBtn" class="btn btn-primary">Create Room</button>
+                        <button id="joinRoomBtn" class="btn btn-secondary">Join Room</button>
+                    </div>
+
+                    <div class="info-text">
+                        <p>🎮 Play Monopoly with friends on your LAN</p>
+                        <p>💻 No installation required - just open in browser!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Join Room Menu -->
+        <div id="joinRoomMenu" class="screen">
+            <div class="menu-container">
+                <h2>Join a Room</h2>
+                <div class="menu-form">
+                    <div class="form-group">
+                        <label for="roomCodeInput">Enter room code:</label>
+                        <input type="text" id="roomCodeInput" placeholder="E.g., A7K2X" maxlength="5" style="text-transform: uppercase;" />
+                    </div>
+                    <div class="button-group">
+                        <button id="joinRoomConfirmBtn" class="btn btn-primary">Join</button>
+                        <button id="backToMainBtn" class="btn btn-secondary">Back</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lobby -->
+        <div id="lobby" class="screen">
+            <div class="lobby-container">
+                <div class="room-header">
+                    <h2>Room: <span id="roomCodeDisplay"></span></h2>
+                    <p id="playerStatus"></p>
+                </div>
+
+                <div class="players-section">
+                    <h3>Players in Room</h3>
+                    <div id="playersList" class="players-list"></div>
+                </div>
+
+                <div class="lobby-actions">
+                    <button id="readyBtn" class="btn btn-primary">I'm Ready!</button>
+                    <button id="startGameBtn" class="btn btn-success" disabled>Start Game</button>
+                </div>
+
+                <div class="info-box">
+                    <p>⚠️ Share this room code with your friends: <strong id="shareCode"></strong></p>
+                    <p>Waiting for players to join and get ready...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Board -->
+        <div id="gameBoard" class="screen">
+            <div class="game-container">
+                <div class="board">
+                    <div class="board-inner">
+                        <!-- Board visualization will be here -->
+                        <div class="current-turn">
+                            <h3 id="currentPlayerDisplay">Current Player: </h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="game-sidebar">
+                    <div class="players-info">
+                        <h3>Players</h3>
+                        <div id="gamePlayersList" class="game-players-list"></div>
+                    </div>
+
+                    <div class="game-actions">
+                        <button id="rollDiceBtn" class="btn btn-primary btn-large">🎲 Roll Dice</button>
+                        <div id="diceResult" class="dice-result" style="display: none;">
+                            <p>Dice: <span id="diceValue"></span></p>
+                        </div>
+                        <button id="endTurnBtn" class="btn btn-secondary">End Turn</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
