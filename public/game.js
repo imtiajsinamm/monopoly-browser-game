@@ -1,4 +1,4 @@
-// Game Client
+// Game Client with Board Integration
 const socket = io();
 
 let gameState = {
@@ -6,8 +6,14 @@ let gameState = {
     roomCode: '',
     isHost: false,
     isReady: false,
-    gameStarted: false
+    gameStarted: false,
+    currentPlayerIndex: 0,
+    diceRolled: false,
+    diceResult: null
 };
+
+let boardRenderer = null;
+let playerColorIndexes = {};
 
 // DOM Elements
 const screens = {
@@ -30,6 +36,7 @@ const buttons = {
     ready: document.getElementById('readyBtn'),
     startGame: document.getElementById('startGameBtn'),
     rollDice: document.getElementById('rollDiceBtn'),
+    move: document.getElementById('moveBtn'),
     endTurn: document.getElementById('endTurnBtn')
 };
 
@@ -38,7 +45,18 @@ function showScreen(screenName) {
     Object.values(screens).forEach(screen => screen.classList.remove('active'));
     if (screens[screenName]) {
         screens[screenName].classList.add('active');
+        if (screenName === 'gameBoard' && !boardRenderer) {
+            initializeBoard();
+        }
     }
+}
+
+function initializeBoard() {
+    const canvas = document.getElementById('boardCanvas');
+    if (!canvas) return;
+    
+    boardRenderer = new BoardRenderer('boardCanvas');
+    boardRenderer.drawBoard();
 }
 
 // Event Listeners
@@ -97,14 +115,69 @@ buttons.startGame.addEventListener('click', () => {
     });
 });
 
-buttons.rollDice.addEventListener('click', () => {
+buttons.rollDice.addEventListener('click', async () => {
+    buttons.rollDice.disabled = true;
+    
+    if (boardRenderer) {
+        const result = await boardRenderer.animateDiceRoll(1500);
+        gameState.diceResult = result;
+        gameState.diceRolled = true;
+        
+        document.getElementById('diceResult').style.display = 'block';
+        document.getElementById('diceValue').textContent = `${result.die1} + ${result.die2} = ${result.die1 + result.die2}`;
+        
+        // Show move button
+        buttons.move.style.display = 'inline-block';
+        buttons.move.focus();
+    }
+    
     socket.emit('roll_dice', {
         roomCode: gameState.roomCode,
         playerName: gameState.playerName
     });
 });
 
+buttons.move.addEventListener('click', async () => {
+    if (!gameState.diceResult || !boardRenderer) return;
+    
+    const spaces = gameState.diceResult.die1 + gameState.diceResult.die2;
+    const currentPlayer = boardRenderer.players[gameState.playerName];
+    const newPosition = (currentPlayer.position + spaces) % 40;
+    
+    // Animate movement
+    await boardRenderer.animatePlayerMovement(
+        gameState.playerName,
+        currentPlayer.position,
+        newPosition,
+        1500
+    );
+    
+    // Hide move button, show end turn
+    buttons.move.style.display = 'none';
+    buttons.endTurn.style.display = 'inline-block';
+    buttons.rollDice.disabled = false;
+    
+    socket.emit('move_player', {
+        roomCode: gameState.roomCode,
+        playerName: gameState.playerName,
+        spaces: spaces
+    });
+    
+    // Show property info
+    const property = BOARD_CONFIG[newPosition];
+    if (property) {
+        showPropertyInfo(property);
+    }
+});
+
 buttons.endTurn.addEventListener('click', () => {
+    gameState.diceRolled = false;
+    gameState.diceResult = null;
+    document.getElementById('diceResult').style.display = 'none';
+    buttons.move.style.display = 'none';
+    buttons.endTurn.style.display = 'none';
+    buttons.rollDice.disabled = false;
+    
     socket.emit('end_turn', {
         roomCode: gameState.roomCode,
         playerName: gameState.playerName
@@ -138,7 +211,6 @@ socket.on('room_updated', (data) => {
     console.log('Room updated:', data);
     updateLobby(data);
     
-    // Enable start button if host and game can start
     if (gameState.isHost) {
         buttons.startGame.disabled = !data.canStart;
     }
@@ -158,12 +230,9 @@ socket.on('game_started', (data) => {
 
 socket.on('dice_rolled', (data) => {
     console.log('Dice rolled:', data);
-    const result = `${data.die1} + ${data.die2} = ${data.total}`;
-    document.getElementById('diceValue').textContent = result;
-    document.getElementById('diceResult').style.display = 'block';
-    
-    if (data.isDoubles) {
-        alert(`${data.player} rolled doubles!`);
+    if (data.player !== gameState.playerName) {
+        // Update for other players
+        document.getElementById('diceValue').textContent = `${data.die1} + ${data.die2} = ${data.total}`;
     }
 });
 
@@ -174,19 +243,16 @@ socket.on('game_state_update', (data) => {
 
 // UI Update Functions
 function updateLobby(data) {
-    // Update room code display
     document.getElementById('roomCodeDisplay').textContent = gameState.roomCode || data.roomCode;
     document.getElementById('shareCode').textContent = gameState.roomCode || data.roomCode;
     
-    // Update player status
     const status = gameState.isReady ? '✓ Ready' : '⏳ Not Ready';
     document.getElementById('playerStatus').textContent = `Your Status: ${status}`;
     
-    // Update players list
     const playersList = document.getElementById('playersList');
     playersList.innerHTML = '';
     
-    data.players.forEach(player => {
+    data.players.forEach((player, idx) => {
         const playerDiv = document.createElement('div');
         playerDiv.className = 'player-item';
         
@@ -203,15 +269,16 @@ function updateLobby(data) {
             <div>${badges}</div>
         `;
         playersList.appendChild(playerDiv);
+        
+        // Store color index
+        playerColorIndexes[player.name] = idx;
     });
 }
 
 function updateGameBoard(gameState) {
-    // Update current player
     const currentPlayer = gameState.players[gameState.currentPlayer];
-    document.getElementById('currentPlayerDisplay').textContent = `Current Player: ${currentPlayer.name}`;
+    document.getElementById('currentPlayerDisplay').textContent = `Current: ${currentPlayer.name}`;
     
-    // Update players info
     const playersList = document.getElementById('gamePlayersList');
     playersList.innerHTML = '';
     
@@ -219,8 +286,7 @@ function updateGameBoard(gameState) {
         const playerDiv = document.createElement('div');
         playerDiv.className = 'game-player-item';
         if (index === gameState.currentPlayer) {
-            playerDiv.style.background = '#fff3cd';
-            playerDiv.style.borderLeft = '4px solid #667eea';
+            playerDiv.classList.add('current');
         }
         
         playerDiv.innerHTML = `
@@ -232,12 +298,29 @@ function updateGameBoard(gameState) {
         playersList.appendChild(playerDiv);
     });
     
+    // Update board
+    if (boardRenderer) {
+        boardRenderer.setPlayers(gameState.players, playerColorIndexes);
+    }
+    
     // Update button states
     const isCurrentPlayer = gameState.players[gameState.currentPlayer].name === gameState.playerName;
     buttons.rollDice.disabled = !isCurrentPlayer;
-    buttons.endTurn.disabled = !isCurrentPlayer;
+}
+
+function showPropertyInfo(property) {
+    const infoDiv = document.getElementById('propertyInfo');
+    if (property.type === 'special') {
+        infoDiv.style.display = 'none';
+        return;
+    }
+    
+    document.getElementById('propertyName').textContent = property.name;
+    document.getElementById('propertyPrice').textContent = `Price: $${property.price}`;
+    document.getElementById('propertyRent').textContent = `Rent: $${property.rent}`;
+    infoDiv.style.display = 'block';
 }
 
 // Initialize
-console.log('Monopoly Browser Game Loaded');
+console.log('Monopoly Browser Game Loaded - Part 1: Visual Board');
 showScreen('mainMenu');

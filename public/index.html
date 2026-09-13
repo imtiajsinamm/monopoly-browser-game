@@ -80,16 +80,16 @@
         <!-- Game Board -->
         <div id="gameBoard" class="screen">
             <div class="game-container">
-                <div class="board">
-                    <div class="board-inner">
-                        <!-- Board visualization will be here -->
-                        <div class="current-turn">
-                            <h3 id="currentPlayerDisplay">Current Player: </h3>
-                        </div>
-                    </div>
+                <div class="board-section">
+                    <canvas id="boardCanvas" width="900" height="900"></canvas>
                 </div>
 
                 <div class="game-sidebar">
+                    <div class="current-turn-box">
+                        <h3>Current Turn</h3>
+                        <p id="currentPlayerDisplay">Waiting...</p>
+                    </div>
+
                     <div class="players-info">
                         <h3>Players</h3>
                         <div id="gamePlayersList" class="game-players-list"></div>
@@ -100,7 +100,14 @@
                         <div id="diceResult" class="dice-result" style="display: none;">
                             <p>Dice: <span id="diceValue"></span></p>
                         </div>
-                        <button id="endTurnBtn" class="btn btn-secondary">End Turn</button>
+                        <button id="moveBtn" class="btn btn-secondary" style="display: none;">Move</button>
+                        <button id="endTurnBtn" class="btn btn-secondary" style="display: none;">End Turn</button>
+                    </div>
+
+                    <div class="property-info" id="propertyInfo" style="display: none;">
+                        <h4 id="propertyName"></h4>
+                        <p id="propertyPrice"></p>
+                        <p id="propertyRent"></p>
                     </div>
                 </div>
             </div>
@@ -108,6 +115,7 @@
     </div>
 
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="board.js"></script>
     <script src="game.js"></script>
 </body>
 </html>
